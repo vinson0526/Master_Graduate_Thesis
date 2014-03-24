@@ -1,0 +1,31 @@
+# Project: HPSS
+# Makefile created by Dev-C++ 5.5.3
+
+CPP      = g++.exe
+CC       = gcc.exe
+WINDRES  = windres.exe
+OBJ      = main.o HPSSClass.o
+LINKOBJ  = main.o HPSSClass.o
+LIBS     = -L"C:/Program Files/Dev-Cpp/MinGW32/lib" -L"C:/Program Files/Dev-Cpp/MinGW32/mingw32/lib" -static-libgcc
+INCS     = -I"C:/Program Files/Dev-Cpp/MinGW32/include"
+CXXINCS  = -I"C:/Program Files/Dev-Cpp/MinGW32/include" -I"C:/Program Files/Dev-Cpp/MinGW32/lib/gcc/mingw32/4.8.1/include/c++"
+BIN      = HPSS.exe
+CXXFLAGS = $(CXXINCS) -std=c++11 -Os
+CFLAGS   = $(INCS) -std=c++11 -Os
+RM       = rm -f
+
+.PHONY: all all-before all-after clean clean-custom
+
+all: all-before $(BIN) all-after
+
+clean: clean-custom
+	${RM} $(OBJ) $(BIN)
+
+$(BIN): $(OBJ)
+	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS)
+
+main.o: main.cpp HPSSClass.h
+	$(CPP) -c main.cpp -o main.o $(CXXFLAGS)
+
+HPSSClass.o: HPSSClass.cpp HPSSClass.h
+	$(CPP) -c HPSSClass.cpp -o HPSSClass.o $(CXXFLAGS)

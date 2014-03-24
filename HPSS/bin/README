@@ -1,0 +1,26 @@
+本程序是HPSS的程序
+
+HPSS_Method_1
+
+必选参数如下：
+arg1：字符串 原始fft文件输入路径
+arg2：字符串 弦乐fft文件输出路径
+arg3: 字符串 打击乐fft文件输出路径
+
+可选参数如下：
+-a：alpha 默认0.95
+-g：gamma 默认0.2
+-f：frameSize 默认512
+-i：iterNum 默认10
+
+程序使用示例如下：
+HPSS.exe "C:\waveFFT.dat" "C:\HFFT.dat" "C:\PFFT.dat" -a 0.95 -g 0.2 -f 512 -i 10
+
+fft文件格式如下
+每一帧一行，存储这一帧的所有点，示例如下
+1.8174744e+00	8.1356595e-01	8.4833166e-01
+4.5453806e+00	1.3276543e+01	1.2058521e+00
+1.5415641e+00	1.2282149e+00	3.8282849e+00
+
+HPSS_Method_2
+TO_BE_CONTINUED

@@ -43,7 +43,7 @@ end
 %%%
 out = zeros(length(T),2);
 for iter = 1 : length(T)
-    [p, l] = findpeaks(SSS(:,iter), 'SORTSTR','descend','NPEAKS',1);
+    [~, l] = findpeaks(SSS(:,iter), 'SORTSTR','descend','NPEAKS',1);
     out(iter,1) = T(iter);
     if l(1) ~= 1 && l(1) ~= length(FF)
         alpha = 20* log10(S(l(1) - 1,iter));

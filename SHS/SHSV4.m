@@ -90,7 +90,7 @@ for t = 1 : length(T)
     end
 end
 
-%从左至右DP
+%从右至左DP
 %probability_ori存储的是所有点的归一化概率值
 probability_ori = zeros(semi_number_voice, length(T));
 for t = 1 : length(T)

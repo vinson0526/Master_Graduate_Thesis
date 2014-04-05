@@ -192,45 +192,15 @@ while(true)
 		for iter2 = 1 : semi_number_voice
 			viterbi(iter2, t).prob = this_frame(iter2);
 		end
-		
+		%将此帧标记为已经计算过
 	end
 	%向左译码
+	%写入到out中
 end
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-%获取当前帧的每个频率的概率
-for t = length(T) - 1 : -1 : 1
-    this_frame = zeros(semi_number_voice, 1);
-    for f = 1 : semi_number_voice
-        temp = zeros(semi_number_voice, 1);
-        for iter = 1 : semi_number_voice
-            temp(iter) = probability_ori(iter, t + 1) * probability_ori(f, t) * distance_penalty(freq_true(f, t) - freq_true(iter, t + 1));
-        end
-        [this_frame(f), viterbi(f, t).next] = max(temp, [], 1);
-    end
-    this_frame = this_frame ./ max(this_frame);
-    for iter2 = 1 : semi_number_voice
-        viterbi(iter2, t).prob = this_frame(iter2);
-    end
-end
 
 
 last_frame = zeros(semi_number_voice, 1);

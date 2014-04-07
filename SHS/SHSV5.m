@@ -104,14 +104,17 @@ end
 viterbi(semi_number_voice, length(T)) = struct('prob',[],'last',[],'next',[]);
 
 has_found = zeros(length(T), 1);
+has_found_count = 0;
+
 while(true)
-	has_found_count = 0;
-	for iter = 1 : length(T)
-		if has_found(iter) == 1
-			has_found_count = has_found_count + 1;
-		end
-	end
-	if has_found_count = length(T)
+	
+% 	for iter = 1 : length(T)
+% 		if has_found(iter) == 1
+% 			has_found_count = has_found_count + 1;
+% 		end
+% 	end
+
+	if has_found_count == length(T)
 		break;
 	end
 	%寻找全局最大值点
@@ -119,7 +122,7 @@ while(true)
 	iter_max_local = [0,0];	%第一维是半音点，第二维是时间点
 	for t = 1 : length(T)
 		if has_found(t) == 0
-			[t_max_value, t_max_local] = max(candidate_pitch(:,t),[],1);	%第三个参数不确定，待实验
+			[t_max_value, t_max_local] = max(candidate_pitch(:,t));
 			if t_max_value > iter_max_value
 				iter_max_value = t_max_value;
 				iter_max_local(1) = t_max_local;
@@ -129,16 +132,17 @@ while(true)
 	end
 	
 	has_found(iter_max_local(2)) = 1;	%将已经得到值得点设为1
+    has_found_count = has_found_count + 1;
 	
 	%更改viterbi前后关系
 	for iter = 1 : semi_number_voice
 		viterbi(iter, iter_max_local(2)).prob = probability_ori(iter, iter_max_local(2));
-		if iter_max_local(2) ~= 1
-			viterbi(iter, iter_max_local(2) - 1).next = iter_max_local(1);
-		end
-		if iter_max_local(2) ~= length(T)
-			viterbi(iter, iter_max_local(2) + 1).last = iter_max_local(1);
-		end
+% 		if iter_max_local(2) ~= 1
+% 			viterbi(iter, iter_max_local(2) - 1).next = iter_max_local(1);
+% 		end
+% 		if iter_max_local(2) ~= length(T)
+% 			viterbi(iter, iter_max_local(2) + 1).last = iter_max_local(1);
+% 		end
 	end
 	
 	%分别进行左译码和右译码
@@ -146,54 +150,70 @@ while(true)
 	right_stop = 0;
 	left_stop = 0;
 	%向右译码
-	for t = iter_max_local(2) + 1 : length(T)
-		if has_found(t) == 1
-			right_stop = t - 1;
-			break;
-		end
-		
-		%终止判断
-		%前一时刻最大的
-		last_max = [viterbi(1, t - 1).prob, 1];
-		for f = 2 : semi_number_voice
-			if last_max < viterbi(f, t - 1).prob
-				last_max(1) = viterbi(f, t - 1).prob;
-				last_max(2) = f;
-			end
-		end
-		
-		%获取判定边界
-		temp_low_bound = last_max(2) - viterbi_judge_field;
-		if temp_low_bound < 1
-			temp_low_bound = 1;
-		end
-		
-		temp_high_bound = last_max(2) + viterbi_judge_field;
-		if temp_high_bound > semi_number_voice
-			temp_high_bound = semi_number_voice;
-		end
-		%判定是否可以继续
-		temp_local_max = max(probability_ori(temp_low_bound : temp_high_bound,t));
-		temp_all_max = max(probability_ori(:,t));
-		if temp_local_max / temp_all_max < vertibi_judge_prob
-			break;
-		end
-		
-		
-		this_frame = zeros(semi_number_voice, 1);
-		for f = 1 : semi_number_voice
-			temp = zeros(semi_number_voice, 1);
-			for iter = 1 : semi_number_voice
-				temp(iter) = probability_ori(iter, t - 1) * probability_ori(f, t) * distance_penalty(freq_true(f, t) - freq_true(iter, t - 1));
-			end
-			[this_frame(f), viterbi(f, t).last] = max(temp, [], 1);
-		end
-		this_frame = this_frame ./ max(this_frame);
-		for iter2 = 1 : semi_number_voice
-			viterbi(iter2, t).prob = this_frame(iter2);
-		end
-		%将此帧标记为已经计算过
-	end
+    if iter_max_local(2) ~= length(T)
+        for t = iter_max_local(2) + 1 : length(T)
+            if has_found(t) == 1
+                right_stop = t - 1;
+                break;
+            end
+
+            %终止判断
+            %前一时刻最大的
+            last_max = [viterbi(1, t - 1).prob, 1]; %第一维是概率值，第二维是半音区间点
+            for f = 2 : semi_number_voice
+                if last_max(1) < viterbi(f, t - 1).prob
+                    last_max(1) = viterbi(f, t - 1).prob;
+                    last_max(2) = f;
+                end
+            end
+
+            %获取判定边界
+            temp_low_bound = last_max(2) - viterbi_judge_field;
+            if temp_low_bound < 1
+                temp_low_bound = 1;
+            end
+
+            temp_high_bound = last_max(2) + viterbi_judge_field;
+            if temp_high_bound > semi_number_voice
+                temp_high_bound = semi_number_voice;
+            end
+            %判定是否可以继续，和本帧的最大值比较
+            [temp_local_max_value, temp_local_max_freq] = max(probability_ori(temp_low_bound : temp_high_bound,t));
+            temp_all_max = max(probability_ori(:,t));
+            if (temp_local_max_value / temp_all_max) < vertibi_judge_prob
+                right_stop = t - 1;
+                break;
+            end
+
+            has_found(t) = 1;   %将本帧标记为已经获取
+            has_found_count = has_found_count + 1;
+
+            if t == iter_max_local(2) + 1
+                this_frame = zeros(semi_number_voice, 1);
+                for f = 1 : semi_number_voice
+                    this_frame(f) = probability_ori(iter_max_local(2), t - 1) * probability_ori(f, t) * distance_penalty(freq_true(f, t) - freq_true(iter_max_local(2), t - 1));
+                end
+                this_frame = this_frame ./ max(this_frame);
+                for iter2 = 1 : semi_number_voice
+                    viterbi(iter2, t).prob = this_frame(iter2);
+                end
+            else
+                this_frame = zeros(semi_number_voice, 1);
+                for f = 1 : semi_number_voice
+                    temp = zeros(semi_number_voice, 1);
+                    for iter = 1 : semi_number_voice
+                        temp(iter) = probability_ori(iter, t - 1) * probability_ori(f, t) * distance_penalty(freq_true(f, t) - freq_true(iter, t - 1));
+                    end
+                    [this_frame(f), viterbi(f, t).last] = max(temp, [], 1);
+                end
+                this_frame = this_frame ./ max(this_frame);
+                for iter2 = 1 : semi_number_voice
+                    viterbi(iter2, t).prob = this_frame(iter2);
+                end
+            %将此帧标记为已经计算过
+            end
+        end
+    end
 	%向左译码
 	%写入到out中
 end

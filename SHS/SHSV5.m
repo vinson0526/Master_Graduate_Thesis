@@ -101,10 +101,13 @@ for t = 1 : length(T)
 end
 
 %存储当前点概率值，和它的前一帧以及后一帧的频点
-viterbi(semi_number_voice, length(T)) = struct('prob',[],'last',[],'next',[]);
+viterbi(semi_number_voice, length(T)) = struct('prob',[],'next',[]);
 
 has_found = zeros(length(T), 1);
 has_found_count = 0;
+
+%输出矩阵
+out = zeros(length(T), 1);
 
 while(true)
 	
@@ -134,21 +137,17 @@ while(true)
 	has_found(iter_max_local(2)) = 1;	%将已经得到值得点设为1
     has_found_count = has_found_count + 1;
 	
-	%更改viterbi前后关系
+	%更改当前帧的viterbi概率值
 	for iter = 1 : semi_number_voice
-		viterbi(iter, iter_max_local(2)).prob = probability_ori(iter, iter_max_local(2));
-% 		if iter_max_local(2) ~= 1
-% 			viterbi(iter, iter_max_local(2) - 1).next = iter_max_local(1);
-% 		end
-% 		if iter_max_local(2) ~= length(T)
-% 			viterbi(iter, iter_max_local(2) + 1).last = iter_max_local(1);
-% 		end
-	end
+		viterbi(iter, iter_max_local(2)).prob = 0;
+    end
+    viterbi(iter_max_local(1),iter_max_local(2)) = 1;
 	
 	%分别进行左译码和右译码
 	%终止标记
-	right_stop = 0;
-	left_stop = 0;
+	right_stop = -1;
+	left_stop = -1;
+    
 	%向右译码
     if iter_max_local(2) ~= length(T)
         for t = iter_max_local(2) + 1 : length(T)
@@ -157,86 +156,92 @@ while(true)
                 break;
             end
 
-            %终止判断
-            %前一时刻最大的
-            last_max = [viterbi(1, t - 1).prob, 1]; %第一维是概率值，第二维是半音区间点
-            for f = 2 : semi_number_voice
-                if last_max(1) < viterbi(f, t - 1).prob
-                    last_max(1) = viterbi(f, t - 1).prob;
-                    last_max(2) = f;
+            this_frame = zeros(semi_number_voice, 1);
+            this_frame_local = zeros(semi_number_voice, 1);
+            for f = 1 : semi_number_voice
+                temp = zeros(semi_number_voice, 1);
+                for f_viterbi = 1 : semi_number_voice
+                    temp(f_viterbi) = viterbi(f_viterbi, t - 1).prob * probability_ori(f, t) * distance_penalty(freq_true(f, t) - freq_true(f_viterbi, t - 1));
                 end
+                [this_frame(f), this_frame_local(f)] = max(temp);
             end
-
-            %获取判定边界
-            temp_low_bound = last_max(2) - viterbi_judge_field;
-            if temp_low_bound < 1
-                temp_low_bound = 1;
-            end
-
-            temp_high_bound = last_max(2) + viterbi_judge_field;
-            if temp_high_bound > semi_number_voice
-                temp_high_bound = semi_number_voice;
-            end
-            %判定是否可以继续，和本帧的最大值比较
-            [temp_local_max_value, temp_local_max_freq] = max(probability_ori(temp_low_bound : temp_high_bound,t));
-            temp_all_max = max(probability_ori(:,t));
-            if (temp_local_max_value / temp_all_max) < vertibi_judge_prob
+            [this_frame_max_value, this_frame_max_local] = max(this_frame);
+            if probability_ori(this_frame_max_local, t) < vertibi_judge_prob
                 right_stop = t - 1;
-                break;
-            end
-
-            has_found(t) = 1;   %将本帧标记为已经获取
-            has_found_count = has_found_count + 1;
-
-            if t == iter_max_local(2) + 1
-                this_frame = zeros(semi_number_voice, 1);
-                for f = 1 : semi_number_voice
-                    this_frame(f) = probability_ori(iter_max_local(2), t - 1) * probability_ori(f, t) * distance_penalty(freq_true(f, t) - freq_true(iter_max_local(2), t - 1));
-                end
-                this_frame = this_frame ./ max(this_frame);
-                for iter2 = 1 : semi_number_voice
-                    viterbi(iter2, t).prob = this_frame(iter2);
-                end
             else
-                this_frame = zeros(semi_number_voice, 1);
+                this_frame = this_frame ./ this_frame_max_value;
                 for f = 1 : semi_number_voice
-                    temp = zeros(semi_number_voice, 1);
-                    for iter = 1 : semi_number_voice
-                        temp(iter) = probability_ori(iter, t - 1) * probability_ori(f, t) * distance_penalty(freq_true(f, t) - freq_true(iter, t - 1));
-                    end
-                    [this_frame(f), viterbi(f, t).last] = max(temp, [], 1);
+                    viterbi(f, t).prob = this_frame(f);
+                    viterbi(f, t).next = this_frame_local(f);
                 end
-                this_frame = this_frame ./ max(this_frame);
-                for iter2 = 1 : semi_number_voice
-                    viterbi(iter2, t).prob = this_frame(iter2);
-                end
-            %将此帧标记为已经计算过
+                has_found(t) = 1;
+                has_found_count = has_found_count + 1;
+                right_stop = t;
             end
         end
     end
-	%向左译码
-	%写入到out中
-end
+   
+    %向左译码
+    if iter_max_local(2) ~= 1
+        for t = iter_max_local(2) - 1 : 1
+            if has_found(t) == 1
+                left_stop = t + 1;
+                break;
+            end
 
-
-
-
-
-
-last_frame = zeros(semi_number_voice, 1);
-for iter = 1 : semi_number_voice
-    last_frame(iter) = viterbi(iter, 1).prob;
-end
-local = zeros(length(T), 1);
-[~, local(1)] = max(last_frame, [], 1);
-
-for iter = 2 : length(T)
-    local(iter) = viterbi(local(iter - 1), iter - 1).next;
-end
-
-out = zeros(length(T), 1);
-for iter = 1 : length(T)
-    out(iter) = freq_true(local(iter), iter);
+            this_frame = zeros(semi_number_voice, 1);
+            this_frame_local = zeros(semi_number_voice, 1);
+            for f = 1 : semi_number_voice
+                temp = zeros(semi_number_voice, 1);
+                for f_viterbi = 1 : semi_number_voice
+                    temp(f_viterbi) = viterbi(f_viterbi, t + 1).prob * probability_ori(f, t) * distance_penalty(freq_true(f, t) - freq_true(f_viterbi, t + 1));
+                end
+                [this_frame(f), this_frame_local(f)] = max(temp);
+            end
+            [this_frame_max_value, this_frame_max_local] = max(this_frame);
+            if probability_ori(this_frame_max_local, t) < vertibi_judge_prob
+                left_stop = t + 1;
+            else
+                this_frame = this_frame ./ this_frame_max_value;
+                for f = 1 : semi_number_voice
+                    viterbi(f, t).prob = this_frame(f);
+                    viterbi(f, t).next = this_frame_local(f);
+                end
+                has_found(t) = 1;
+                has_found_count = has_found_count + 1;
+                left_stop = t;
+            end
+        end
+    end
+	%得到频率
+    local = zeros(length(T), 1);
+    %左-max
+    last_frame_left = zeros(semi_number_voice, 1);
+    for iter = 1 : semi_number_voice
+        last_frame_left(iter) = viterbi(iter, left_stop).prob;
+    end
+    
+    [~, local(left_stop)] = max(last_frame_left);
+    if left_stop < iter_max_local(2)
+        for iter = left_stop + 1 : iter_max_local(2)
+            local(iter) = viterbi(local(iter - 1), iter - 1).next;
+        end
+    end
+    %右-max
+    last_frame_right = zeros(semi_number_voice, 1);
+    for iter = 1 : semi_number_voice
+        last_frame_right(iter) = viterbi(iter, right_stop).prob;
+    end
+    [~, local(right_stop)] = max(last_frame_right);
+    if right_stop < iter_max_local(2)
+        for iter = right_stop + 1 : iter_max_local(2)
+            local(iter) = viterbi(local(iter - 1), iter - 1).next;
+        end
+    end
+    %写入out
+    for iter = right_stop : right_stop
+        out(iter) = freq_true(local(iter), iter);
+    end
 end
 
 %写入文件

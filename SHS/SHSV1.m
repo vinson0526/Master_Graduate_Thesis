@@ -1,4 +1,4 @@
-function [ out ] = SHSV1( waveName )
+function [ out ] = SHSV1( waveName, outFile )
 %UNTITLED2 Summary of this function goes here
 %   Detailed explanation goes here
 [x, fs] =audioread(waveName);
@@ -68,7 +68,7 @@ splash = strfind(waveName, '/');
 if isempty(splash)
     splash = strfind(waveName, '\');
 end
-outFile = waveName(splash(length(splash)) + 1:length(waveName) - 4);
+%outFile = waveName(splash(length(splash)) + 1:length(waveName) - 4);
 dlmwrite(outFile, out2,'delimiter', '\t', 'precision', 5);
 end
 

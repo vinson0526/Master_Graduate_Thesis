@@ -141,7 +141,7 @@ while(true)
 	for iter = 1 : semi_number_voice
 		viterbi(iter, iter_max_local(2)).prob = 0;
     end
-    viterbi(iter_max_local(1),iter_max_local(2)) = 1;
+    viterbi(iter_max_local(1),iter_max_local(2)).prob = 1;
 	
 	%分别进行左译码和右译码
 	%终止标记
@@ -179,6 +179,8 @@ while(true)
                 right_stop = t;
             end
         end
+    else
+        right_stop = length(T);
     end
    
     %向左译码
@@ -212,6 +214,8 @@ while(true)
                 left_stop = t;
             end
         end
+    else
+        left_stop = 1;
     end
 	%得到频率
     local = zeros(length(T), 1);
@@ -245,7 +249,7 @@ while(true)
 end
 
 %写入文件
-%dlmwrite(out_file, out,'delimiter', '\t', 'precision', 5);
+dlmwrite(out_file, out,'delimiter', '\t', 'precision', 5);
 end
 
 

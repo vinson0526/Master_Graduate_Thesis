@@ -134,7 +134,7 @@ for iter = 1 : length(T)
 end
 
 %Ğ´ÈëÎÄ¼ş
-%dlmwrite(out_file, out,'delimiter', '\t', 'precision', 5);
+dlmwrite(out_file, out,'delimiter', '\t', 'precision', 5);
 end
 
 
